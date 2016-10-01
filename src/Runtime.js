@@ -4,7 +4,6 @@ const HttpEvent = require('./HttpEvent');
 const morgan = require('morgan');
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const port = 3000;
 
 /**
  * Runtime Class instantiates Express.js server
@@ -54,11 +53,11 @@ class Runtime {
       }
     });
 
-    this.app.listen(port, (e) => {
+    this.app.listen(this.options.port, (e) => {
       if (e) {
         console.error(e);
       } else {
-        console.log(`serverless-local listening on port ${port}`);
+        console.log(`serverless-local listening on port ${this.options.port}`);
       }
     });
   }
