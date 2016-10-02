@@ -1,6 +1,7 @@
 'use strict';
 
-const functionLoader = require;
+const Lambda = require('./Lambda');
+const AuthorizerLambda = require('./AuthorizerLambda');
 
 /**
  * Handles API Gateway HTTP Event
@@ -98,8 +99,9 @@ class HttpEvent {
    */
   route(request, response) {
 
-    const event = this.buildFunctionEventFromRequest(request);
-    const context = this.buildFunctionContext();
+    const lambda = new Lambda(this.functionPath, this.handlerName);
+    const event = lambda.buildEventFromRequest(request, this.serverless.service.provider.stage || 'dev');
+    const context = lambda.buildContext();
     const callback = (failure, result) => {
 
       if (failure) {
@@ -108,168 +110,88 @@ class HttpEvent {
 
       // Lambda did not fail but also did not succeed
       if (!result || typeof result !== 'object') {
-        return response.status(500).send('Internal server error');
+        return response
+          .status(500)
+          .send('Internal server error');
       }
 
-      const statusCode = result.statusCode || 200;
-      const headers = result.headers || {};
-      const body = result.body || null;
-
-      response.status(statusCode).set(headers).send(body);
+      response
+        .status(result.statusCode || 200)
+        .set(result.headers || {})
+        .send(result.body || null);
     };
-
-
-    // Invalidate common.js cache
-    delete functionLoader.cache[functionLoader.resolve(this.functionPath)];
-
 
     // Create authorize function if the endpoint requires it
     if (this.authorizer) {
 
-      const authorizerEvent = this.buildAuthorizerEvent(request);
+      const authorizer = new AuthorizerLambda(this.serverless, this.authorizer);
+      const authorizerEvent = authorizer.buildEventFromRequest(request);
+      const authorizerContext = authorizer.buildContext();
 
       if (authorizerEvent === null) {
-        response.status(403).set({'Content-Type': 'application/json'}).send(JSON.stringify({message: 'Unauthorized'}));
-        return;
+        return response
+          .status(403)
+          .set({'Content-Type': 'application/json'})
+          .send(JSON.stringify({message: 'Unauthorized'}));
       }
 
-      try {
+      authorizer.authorize(authorizerEvent, authorizerContext, (err, authorizerResult) => {
 
-        this.authorize(this.authorizer.name, authorizerEvent, (err, authorizerResult) => {
+        if (err) {
 
-          if (err) {
+          // This is the default returned by APIG in case of authentication failure
+          console.error(`Auth λ ${this.functionName} ERROR: ${err}`);
+          response
+            .status(403)
+            .set({'Content-Type': 'application/json'})
+            .send(JSON.stringify({message: 'Unauthorized'}));
 
-            // This is the default returned by APIG in case of authentication failure
-            console.error(`Auth λ ${this.functionName} ERROR: ${err}`);
-            return response.status(403).set({'Content-Type': 'application/json'}).send(JSON.stringify({message: 'Unauthorized'}));
+        } else if (typeof authorizerResult.principalId !== 'string' && typeof authorizerResult.principalId !== 'number') {
 
-          } else if (typeof authorizerResult.principalId !== 'string' && typeof authorizerResult.principalId !== 'number') {
+          console.error(`Auth λ ${this.functionName} returned invalid principalId`);
+          response
+            .status(403)
+            .set({'Content-Type': 'application/json'})
+            .send(JSON.stringify({message: 'Unauthorized'}));
 
-            console.error(`Auth λ ${this.functionName} returned invalid principalId`);
-            return response.status(403).set({'Content-Type': 'application/json'}).send(JSON.stringify({message: 'Unauthorized'}));
+        } else {
 
-          } else {
+          // APIG always parses principalId to string
+          event.requestContext.authorizer = {principalId: `${authorizerResult.principalId}`};
 
-            // APIG always parses principalId to string
-            event.requestContext.authorizer = {principalId: `${authorizerResult.principalId}`};
+          // Call the function authorizers
+          try {
 
-            // Authentication succeed, now we can invoke the lambda handler
-            try {
-              functionLoader(this.functionPath)[this.handlerName](event, context, callback);
-            } catch(e) {
-              return response.status(500).send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
-            }
+            lambda.invoke(event, context, callback);
+
+          } catch (e) {
+
+            console.error(e);
+
+            response
+              .status(500)
+              .send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
           }
-        });
-      } catch(e) {
-        return response.status(500).send(`Auth λ ${this.functionName} Caught ERROR: ${e.message}`);
-      }
+
+        }
+      });
 
     } else {
 
       // Call the function w/o authorizers
       try {
-        functionLoader(this.functionPath)[this.handlerName](event, context, callback);
+
+        lambda.invoke(event, context, callback);
+
       } catch (e) {
-        return response.status(500).send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
+
+        console.error(e);
+
+        response
+          .status(500)
+          .send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
       }
     }
-  }
-
-  authorize(functionName, handlerEvent, callback) {
-
-    const authFunctionObj = this.serverless.service.getFunction(functionName);
-
-    // Validate the authorizer parameters
-    if ('handler' in authFunctionObj === false) {
-      throw new Error(`Authorizer λ ${functionName} has no handler`);
-    }
-
-    const handlerPath = authFunctionObj.handler.split('.')[0];
-    const handlerName = authFunctionObj.handler.split('/').pop().split('.')[1];
-    const functionPath = `${process.cwd()}/${handlerPath}`;
-
-    const authCallback = (err, authorizerResult) => {
-
-      // Unauthorized - authorizer returned error or invalid data
-      if (err) return callback(err);
-      if ('principalId' in authorizerResult === false || 'policyDocument' in authorizerResult === false) {
-        return callback(`Result from authorizer λ ${functionName} is invalid`);
-      }
-
-      // Authorized
-      callback(null, authorizerResult)
-    };
-
-
-    // Invalidate common.js cache and invoke the function w/o authorizers
-    delete functionLoader.cache[functionLoader.resolve(functionPath)];
-    functionLoader(functionPath)[handlerName](handlerEvent, {}, authCallback);
-  }
-
-
-  buildAuthorizerEvent(request) {
-
-    const authHeader = this.authorizer.identitySource.split('.').pop().toLowerCase();
-
-    // There is no request header at all
-    if (authHeader in request.headers === false) {
-      return null;
-    }
-
-    // TODO: Should this be built by serverless in options?
-    const providerStage = this.serverless.service.provider.stage || 'dev';
-    const providerRegion = this.serverless.service.provider.region || 'us-east-1';
-
-    return {
-      type: 'TOKEN',
-      authorizationToken: request.headers[authHeader],
-      methodArn: `arn:aws:execute-api:${providerRegion}:<Account id>:<API id>/${providerStage}/${request.method}${request.path}`,
-    };
-  }
-
-  buildFunctionContext() {
-    return {};
-  }
-
-  buildFunctionEventFromRequest(request) {
-
-    let result = {
-      resource: request.path,
-      path: request.path,
-      httpMethod: request.method.toUpperCase(),
-      headers: [],
-      queryStringParameters: Object.keys(request.query).length ? request.query : null,
-      pathParameters: Object.keys(request.params).length ? request.params : null,
-      stageVariables: null,
-      requestContext: {
-        accountId: '<Account id>',
-        resourceId: '<Resource id>',
-        stage: this.serverless.service.provider.stage || 'dev',
-        requestId: '<Request id>',
-        identity: null,
-        resourcePath: request.path,
-        httpMethod: request.method.toUpperCase(),
-        apiId: '<API id>'
-      },
-      body: request.body
-    };
-
-    // Camel-Case header names, as this is what APIG does
-    Object.keys(request.headers).forEach((header) => {
-      result.headers[this.camelizeHeader(header)] = request.headers[header];
-    });
-
-    return result;
-  }
-
-  camelizeHeader(str) {
-    var arr = str.split('-');
-    for (var i = 0; i < arr.length; i++) {
-      arr[i]= arr[i][0].toUpperCase() + arr[i].slice(1);
-    }
-    str = arr.join('-');
-    return str;
   }
 }
 
