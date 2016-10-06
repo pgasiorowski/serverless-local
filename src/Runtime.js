@@ -25,7 +25,6 @@ class Runtime {
    * Instantiate express.js server
    */
   run() {
-
     process.env.IS_OFFLINE = true;
 
     this.app = express();
@@ -33,19 +32,18 @@ class Runtime {
     this.app.use(this.requestBodyMiddleware);
     this.app.use(morgan(':method :url :status :res[content-length] [:response-time ms]'));
 
-    this.serverless.service.getAllFunctions().forEach((functionName) => {
-      const functionObj = this.serverless.service.getFunction(functionName);
+    this.serverless.service.getAllFunctions().forEach((name) => {
+      const functionObj = this.serverless.service.getFunction(name);
       if (functionObj.events) {
         functionObj.events.forEach(event => {
           if (event.http) {
-
-            let httpEvent = new HttpEvent(this.serverless, functionName, event.http);
+            const httpEvent = new HttpEvent(this.serverless, name, event.http);
             httpEvent.setFunctionHandler(functionObj.handler);
 
-            let endpointMethod = httpEvent.getHttpMethod();
-            let endpointPath = httpEvent.getHttpPath();
+            const endpointMethod = httpEvent.getHttpMethod();
+            const endpointPath = httpEvent.getHttpPath();
 
-            console.log(`Routing ${endpointMethod} /${endpointPath} via λ ${functionName}`);
+            this.serverless.consoleLog(`Routing ${endpointMethod} /${endpointPath} via λ ${name}`);
 
             this.app[endpointMethod](endpointPath, httpEvent.route.bind(httpEvent));
           }
@@ -54,11 +52,7 @@ class Runtime {
     });
 
     this.app.listen(this.options.port, (e) => {
-      if (e) {
-        console.error(e);
-      } else {
-        console.log(`serverless-local listening on port ${this.options.port}`);
-      }
+      this.serverless.consoleLog(e || `serverless-local listening on port ${this.options.port}`);
     });
   }
 
@@ -73,7 +67,7 @@ class Runtime {
     request.body = null;
     request.setEncoding('utf8');
 
-    request.on('data', function(chunk) {
+    request.on('data', (chunk) => {
       if (request.body === null) {
         request.body = '';
       }

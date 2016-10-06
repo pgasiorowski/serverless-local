@@ -5,10 +5,10 @@ const Runtime = require('./Runtime');
 class Local {
 
   constructor(serverless, options) {
+    const ownOptions = options;
+    ownOptions.port = options.port || 3000;
 
-    options.port = options.port || 3000;
-
-    this.runtime = new Runtime(serverless, options);
+    this.runtime = new Runtime(serverless, ownOptions);
 
     this.commands = {
       local: {
@@ -17,10 +17,10 @@ class Local {
         options: {
           port: {
             usage: 'Port to listen on. Default: 3000',
-            shortcut: 'P'
+            shortcut: 'P',
           },
-        }
-      }
+        },
+      },
     };
 
     this.hooks = {

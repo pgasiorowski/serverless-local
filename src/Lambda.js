@@ -10,16 +10,14 @@ class Lambda {
   }
 
   invoke(event, context, callback) {
-
     // Invalidate common.js cache
     delete functionLoader.cache[functionLoader.resolve(this.path)];
 
     functionLoader(this.path)[this.handler](event, context, callback);
   }
 
-  buildEventFromRequest(request, stage) {
-
-    let result = {
+  buildEventFromRequest(request, apiStage) {
+    const result = {
       resource: request.path,
       path: request.path,
       httpMethod: request.method.toUpperCase(),
@@ -30,14 +28,14 @@ class Lambda {
       requestContext: {
         accountId: '<Account id>',
         resourceId: '<Resource id>',
-        stage: stage,
+        stage: apiStage,
         requestId: '<Request id>',
         identity: null,
         resourcePath: request.path,
         httpMethod: request.method.toUpperCase(),
-        apiId: '<API id>'
+        apiId: '<API id>',
       },
-      body: request.body
+      body: request.body,
     };
 
     // Camel-Case header names, as this is what APIG does
@@ -53,12 +51,11 @@ class Lambda {
   }
 
   camelizeHeader(str) {
-    var arr = str.split('-');
-    for (var i = 0; i < arr.length; i++) {
-      arr[i]= arr[i][0].toUpperCase() + arr[i].slice(1);
+    const arr = str.split('-');
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] = arr[i][0].toUpperCase() + arr[i].slice(1);
     }
-    str = arr.join('-');
-    return str;
+    return arr.join('-');
   }
 }
 

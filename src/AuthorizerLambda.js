@@ -9,8 +9,14 @@ class AuthorizerLambda {
     this.authorizer = authorizerObj;
   }
 
+  /**
+   * Invokes a lambda function an authorizer for another function.
+   *
+   * @param {Object}   event
+   * @param {Object}   context
+   * @param {Function} callback
+   */
   authorize(event, context, callback) {
-
     const authFunctionObj = this.serverless.service.getFunction(this.authorizer.name);
 
     // Validate the authorizer
@@ -26,18 +32,17 @@ class AuthorizerLambda {
     const lambda = new Lambda(`${process.cwd()}/${path}`, name);
 
     lambda.invoke(event, context, (err, authorizerResult) => {
-
-      // Unauthorized - authorizer returned error or invalid data
       if (err) {
-        return callback(err);
+        // Unauthorized - authorizer returned error or invalid data
+        callback(err);
+      } else if ('principalId' in authorizerResult === false) {
+        callback(`Result from authorizer λ ${this.authorizer.name} is invalid`);
+      } else if ('policyDocument' in authorizerResult === false) {
+        callback(`Result from authorizer λ ${this.authorizer.name} is missing a policy`);
+      } else {
+        // Authorized
+        callback(null, authorizerResult);
       }
-      if ('principalId' in authorizerResult === false || 'policyDocument' in authorizerResult === false) {
-        return callback(`Result from authorizer λ ${this.authorizer.name} is invalid`);
-      }
-
-      // Authorized
-      callback(null, authorizerResult)
-
     });
   }
 
@@ -48,7 +53,6 @@ class AuthorizerLambda {
    * @returns {Object|null}
    */
   buildEventFromRequest(request) {
-
     const authHeader = this.authorizer.identitySource.split('.').pop().toLowerCase();
 
     // There is no request header at all
@@ -63,7 +67,14 @@ class AuthorizerLambda {
     return {
       type: 'TOKEN',
       authorizationToken: request.headers[authHeader],
-      methodArn: `arn:aws:execute-api:${providerRegion}:<Account id>:<API id>/${providerStage}/${request.method}${request.path}`,
+      methodArn: [
+        'arn',
+        'aws',
+        'execute-api',
+        providerRegion,
+        '<Account id>',
+        `<API id>/${providerStage}/${request.method}${request.path}`,
+      ].join(':'),
     };
   }
 
