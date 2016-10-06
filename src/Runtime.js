@@ -40,10 +40,11 @@ class Runtime {
             const httpEvent = new HttpEvent(this.serverless, name, event.http);
             httpEvent.setFunctionHandler(functionObj.handler);
 
-            const endpointMethod = httpEvent.getHttpMethod();
             const endpointPath = httpEvent.getHttpPath();
+            const endpointMethod = httpEvent.getHttpMethod();
+            const paddedMethod = this.padMethod(endpointMethod);
 
-            this.serverless.consoleLog(`Routing ${endpointMethod} /${endpointPath} via λ ${name}`);
+            this.serverless.cli.log(`Routing ${paddedMethod} ${endpointPath} via λ ${name}`);
 
             this.app[endpointMethod](endpointPath, httpEvent.route.bind(httpEvent));
           }
@@ -52,7 +53,7 @@ class Runtime {
     });
 
     this.app.listen(this.options.port, (e) => {
-      this.serverless.consoleLog(e || `serverless-local listening on port ${this.options.port}`);
+      this.serverless.cli.log(e || `serverless-local listening on port ${this.options.port}`);
     });
   }
 
@@ -75,6 +76,15 @@ class Runtime {
     });
 
     request.on('end', next);
+  }
+
+  /**
+   * Pad a method string with appropriate number of spaces
+   * @param {String} string
+   * @returns {*}
+   */
+  padMethod(string) {
+    return (string.length >= 7) ? string : this.padMethod(`${string} `);
   }
 }
 

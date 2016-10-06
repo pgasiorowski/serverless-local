@@ -111,7 +111,7 @@ class HttpEvent {
     const context = lambda.buildContext();
     const callback = (failure, result) => {
       if (failure) {
-        this.serverless.consoleLog(`λ ${this.functionName} returned error: ${failure}`);
+        this.serverless.cli.log(`λ ${this.functionName} returned error: ${failure}`);
       }
 
       // Lambda did not fail but also did not succeed
@@ -142,17 +142,16 @@ class HttpEvent {
         return;
       }
 
-      authorizer.authorize(authorizerEvent, authorizerContext, (err, authorizerResult) => {
-        const principalId = authorizerResult.principalId || null;
+      authorizer.authorize(authorizerEvent, authorizerContext, (err, authResult) => {
         if (err) {
           // This is the default returned by APIG in case of authentication failure
-          this.serverless.consoleLog(`Auth λ ${this.functionName} ERROR: ${err}`);
+          this.serverless.cli.log(`Auth λ ${this.functionName} ERROR: ${err}`);
           response
             .status(403)
             .set({ 'Content-Type': 'application/json' })
             .send(JSON.stringify({ message: 'Unauthorized' }));
-        } else if (typeof principalId !== 'string' && typeof principalId !== 'number') {
-          this.serverless.consoleLog(`Auth λ ${this.functionName} returned invalid principalId`);
+        } else if (typeof authResult.principalId !== 'string' && typeof authResult.principalId !== 'number') {
+          this.serverless.cli.log(`Auth λ ${this.functionName} returned invalid principalId`);
           response
             .status(403)
             .set({ 'Content-Type': 'application/json' })
@@ -160,13 +159,13 @@ class HttpEvent {
         } else {
           // APIG always parses principalId to string
           event.requestContext.authorizer = {
-            principalId: `${principalId}`,
+            principalId: `${authResult.principalId}`,
           };
           // Call the function authorizers
           try {
             lambda.invoke(event, context, callback);
           } catch (e) {
-            this.serverless.consoleLog(e);
+            this.serverless.cli.log(e);
             response
               .status(500)
               .send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
@@ -178,7 +177,7 @@ class HttpEvent {
       try {
         lambda.invoke(event, context, callback);
       } catch (e) {
-        this.serverless.consoleLog(e);
+        this.serverless.cli.log(e);
         response
           .status(500)
           .send(`λ ${this.functionName} Caught ERROR: ${e.message}`);
