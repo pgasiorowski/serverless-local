@@ -64,6 +64,7 @@ class Runtime {
    * @param {Object} response
    * @param {Function} next
    */
+  /* eslint-disable no-param-reassign */
   requestBodyMiddleware(request, response, next) {
     request.body = null;
     request.setEncoding('utf8');
@@ -77,6 +78,7 @@ class Runtime {
 
     request.on('end', next);
   }
+  /* eslint-enable no-param-reassign */
 
   /**
    * Pad a method string with appropriate number of spaces

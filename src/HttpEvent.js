@@ -142,7 +142,7 @@ class HttpEvent {
         return;
       }
 
-      authorizer.authorize(authorizerEvent, authorizerContext, (err, authResult) => {
+      authorizer.authorize(authorizerEvent, authorizerContext, (err, res) => {
         if (err) {
           // This is the default returned by APIG in case of authentication failure
           this.serverless.cli.log(`Auth λ ${this.functionName} ERROR: ${err}`);
@@ -150,7 +150,7 @@ class HttpEvent {
             .status(403)
             .set({ 'Content-Type': 'application/json' })
             .send(JSON.stringify({ message: 'Unauthorized' }));
-        } else if (typeof authResult.principalId !== 'string' && typeof authResult.principalId !== 'number') {
+        } else if (typeof res.principalId !== 'string' && typeof res.principalId !== 'number') {
           this.serverless.cli.log(`Auth λ ${this.functionName} returned invalid principalId`);
           response
             .status(403)
@@ -159,7 +159,7 @@ class HttpEvent {
         } else {
           // APIG always parses principalId to string
           event.requestContext.authorizer = {
-            principalId: `${authResult.principalId}`,
+            principalId: `${res.principalId}`,
           };
           // Call the function authorizers
           try {
