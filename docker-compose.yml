@@ -1,8 +1,10 @@
 lint:
-  image: node:4.3.2
+  build: .
   environment:
     - TERM=xterm-256color
   working_dir: /api
   volumes:
-   - .:/api
+   - ./src:/api/src
+   - ./.eslintignore:/api/.eslintignore
+   - ./.eslintrc.js:/api/.eslintrc.js
   command: npm run lint
