@@ -8,3 +8,13 @@ lint:
    - ./.eslintignore:/api/.eslintignore
    - ./.eslintrc.js:/api/.eslintrc.js
   command: npm run lint
+
+test:
+  build: .
+  environment:
+    - TERM=xterm-256color
+  working_dir: /api
+  volumes:
+   - ./src:/api/src
+   - ./tests:/api/tests
+  command: node_modules/.bin/istanbul cover node_modules/mocha/bin/_mocha tests/all -- -R spec --recursive

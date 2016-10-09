@@ -5,7 +5,6 @@ module.exports = {
     "func-names": "off",
 
     // doesn't work in node v4 :(
-    // TODO: Remove
     "strict": "off",
     "prefer-rest-params": "off",
     "react/require-extension" : "off",
