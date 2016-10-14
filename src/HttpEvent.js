@@ -122,10 +122,21 @@ class HttpEvent {
         return;
       }
 
-      response
-        .status(result.statusCode || 200)
-        .set(result.headers || {})
-        .send(result.body || null);
+      const headers = result.headers || {};
+
+      // APIG defaults 'Content-Type' if not provided
+      if (!headers['Content-Type'] && !headers['content-type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      response.status(result.statusCode || 200);
+      response.set(headers);
+
+      if (result.body) {
+        response.send(result.body);
+      } else {
+        response.end();
+      }
     };
 
     // Create authorize function if the endpoint requires it
