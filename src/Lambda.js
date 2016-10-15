@@ -21,7 +21,7 @@ class Lambda {
       resource: request.path,
       path: request.path,
       httpMethod: request.method.toUpperCase(),
-      headers: [],
+      headers: {},
       queryStringParameters: Object.keys(request.query).length ? request.query : null,
       pathParameters: Object.keys(request.params).length ? request.params : null,
       stageVariables: null,
