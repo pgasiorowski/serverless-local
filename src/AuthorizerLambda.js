@@ -7,16 +7,7 @@ class AuthorizerLambda {
   constructor(serverless, authorizerObj) {
     this.serverless = serverless;
     this.authorizer = authorizerObj;
-  }
 
-  /**
-   * Invokes a lambda function an authorizer for another function.
-   *
-   * @param {Object}   event
-   * @param {Object}   context
-   * @param {Function} callback
-   */
-  authorize(event, context, callback) {
     const authFunctionObj = this.serverless.service.getFunction(this.authorizer.name);
 
     // Validate the authorizer
@@ -27,8 +18,19 @@ class AuthorizerLambda {
       throw new Error(`Authorizer λ ${this.authorizer.name} has no handler`);
     }
 
-    const path = authFunctionObj.handler.split('.')[0];
-    const name = authFunctionObj.handler.split('/').pop().split('.')[1];
+    this.authFunctionObj = authFunctionObj;
+  }
+
+  /**
+   * Invokes a lambda function an authorizer for another function.
+   *
+   * @param {Object}   event
+   * @param {Object}   context
+   * @param {Function} callback
+   */
+  authorize(event, context, callback) {
+    const path = this.authFunctionObj.handler.split('.')[0];
+    const name = this.authFunctionObj.handler.split('/').pop().split('.')[1];
     const lambda = new Lambda(`${process.cwd()}/${path}`, name);
 
     lambda.invoke(event, context, (err, authorizerResult) => {
