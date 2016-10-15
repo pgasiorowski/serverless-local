@@ -2,7 +2,6 @@
 
 const sinon = require('sinon');
 const expect = require('chai').expect;
-const should = require('chai').should;
 const AuthorizerLambda = require('../../src/AuthorizerLambda');
 
 describe('AuthorizerLambda', () => {
@@ -127,7 +126,80 @@ describe('AuthorizerLambda', () => {
   });
 
   describe('#buildEventFromRequest()', () => {
-    // TODO
+    it('returns null if there is no request header', () => {
+      const serverless = {
+        service: {
+          getFunction: sinon.stub().returns({
+            handler: 'tests/stubs/authorizer.handler'
+          })
+        }
+      };
+      const authorizer = {
+        name: 'testAuthorizer',
+        identitySource: 'identitySource: method.request.header.Cookie'
+      };
+      const request = { headers: {}};
+
+      const subject = new AuthorizerLambda(serverless, authorizer);
+      expect(subject.buildEventFromRequest(request)).to.be.null;
+    });
+
+    it('returns event object with provider defaults', () => {
+      const serverless = {
+        service: {
+          provider: {},
+          getFunction: sinon.stub().returns({
+            handler: 'tests/stubs/authorizer.handler'
+          })
+        }
+      };
+      const authorizer = {
+        name: 'testAuthorizer',
+        identitySource: 'method.request.header.Cookie'
+      };
+      const request = {
+        method: 'get',
+        path: '/resource/endpoint',
+        headers: { cookie: 'name=value' }
+      };
+
+      const subject = new AuthorizerLambda(serverless, authorizer);
+      expect(subject.buildEventFromRequest(request)).to.be.deep.equal({
+        type: 'TOKEN',
+        authorizationToken: 'name=value',
+        methodArn: 'arn:aws:execute-api:us-east-1:<Account id>:<API id>/dev/get/resource/endpoint',
+      });
+    });
+
+    it('returns event object with customer stage and region', () => {
+      const serverless = {
+        service: {
+          provider: {
+            stage: 'abc',
+            region: 'us-west-2'
+          },
+          getFunction: sinon.stub().returns({
+            handler: 'tests/stubs/authorizer.handler'
+          })
+        }
+      };
+      const authorizer = {
+        name: 'testAuthorizer',
+        identitySource: 'method.request.header.Cookie'
+      };
+      const request = {
+        method: 'get',
+        path: '/resource/endpoint',
+        headers: { cookie: 'name=value' }
+      };
+
+      const subject = new AuthorizerLambda(serverless, authorizer);
+      expect(subject.buildEventFromRequest(request)).to.be.deep.equal({
+        type: 'TOKEN',
+        authorizationToken: 'name=value',
+        methodArn: 'arn:aws:execute-api:us-west-2:<Account id>:<API id>/abc/get/resource/endpoint',
+      });
+    });
   });
 
   describe('#buildContext()', () => {
