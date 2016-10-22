@@ -19,12 +19,7 @@ class Runtime {
   constructor(serverless, options) {
     this.serverless = serverless;
     this.options = options;
-  }
 
-  /**
-   * Instantiate express.js server
-   */
-  run() {
     process.env.IS_OFFLINE = true;
 
     this.app = express();
@@ -32,6 +27,25 @@ class Runtime {
     this.app.use(this.requestBodyMiddleware);
     this.app.use(morgan(':method :url :status :res[content-length] [:response-time ms]'));
 
+    this.setupRoutes();
+  }
+
+  /**
+   * Instantiate express.js server
+   * @param {Function} done
+   * @return {Object}  Instance of express.js server
+   */
+  run(done) {
+    return this.app.listen(this.options.port, (e) => {
+      this.serverless.cli.log(e || `serverless-local listening on port ${this.options.port}`);
+      done();
+    });
+  }
+
+  /**
+   * Setup Routes
+   */
+  setupRoutes() {
     this.serverless.service.getAllFunctions().forEach((name) => {
       const functionObj = this.serverless.service.getFunction(name);
       if (functionObj.events) {
@@ -50,10 +64,6 @@ class Runtime {
           }
         });
       }
-    });
-
-    this.app.listen(this.options.port, (e) => {
-      this.serverless.cli.log(e || `serverless-local listening on port ${this.options.port}`);
     });
   }
 
