@@ -38,7 +38,9 @@ class Runtime {
   run(done) {
     return this.app.listen(this.options.port, (e) => {
       this.serverless.cli.log(e || `serverless-local listening on port ${this.options.port}`);
-      done();
+      if (done) {
+        done();
+      }
     });
   }
 
