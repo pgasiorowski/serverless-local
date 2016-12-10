@@ -105,13 +105,15 @@ class HttpEvent {
    */
   route(request, response) {
     const stage = this.serverless.service.provider.stage || 'dev';
-    const lambda = new Lambda(this.functionPath, this.handlerName);
+    const env = this.serverless.service.provider.environment || {}; // TODO: Merge with function obj
+    const lambda = new Lambda(this.functionPath, this.handlerName, env);
 
     const event = lambda.buildEventFromRequest(request, stage);
     const context = lambda.buildContext();
     const callback = (failure, result) => {
       if (failure) {
-        this.serverless.cli.log(`λ ${this.functionName} returned error: ${failure}`);
+        const errorMessage = JSON.stringify(failure);
+        this.serverless.cli.log(`λ ${this.functionName} returned error: ${errorMessage}`);
       }
 
       // Lambda did not fail but also did not succeed

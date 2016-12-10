@@ -4,7 +4,8 @@ const functionLoader = require;
 
 class Lambda {
 
-  constructor(path, handler) {
+  constructor(path, handler, env) {
+    this.env = env || {};
     this.path = path;
     this.handler = handler;
   }
@@ -13,7 +14,14 @@ class Lambda {
     // Invalidate common.js cache
     delete functionLoader.cache[functionLoader.resolve(this.path)];
 
-    functionLoader(this.path)[this.handler](event, context, callback);
+    // Extend environmental variables
+    const originalEnv = process.env;
+    process.env = Object.assign(process.env, this.env);
+
+    functionLoader(this.path)[this.handler](event, context, (failure, success) => {
+      process.env = originalEnv;
+      callback(failure, success);
+    });
   }
 
   buildEventFromRequest(request, apiStage) {

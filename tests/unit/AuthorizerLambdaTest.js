@@ -52,6 +52,7 @@ describe('AuthorizerLambda', () => {
     it('returns error', (done) => {
       const serverless = {
         service: {
+          provider: {},
           getFunction: sinon.stub().returns({
             handler: 'tests/stubs/authorizer.error'
           })
@@ -70,6 +71,7 @@ describe('AuthorizerLambda', () => {
     it('returns missingAuthorizerId', (done) => {
       const serverless = {
         service: {
+          provider: {},
           getFunction: sinon.stub().returns({
             handler: 'tests/stubs/authorizer.missingAuthorizerId'
           })
@@ -88,6 +90,7 @@ describe('AuthorizerLambda', () => {
     it('returns missingPolicy', (done) => {
       const serverless = {
         service: {
+          provider: {},
           getFunction: sinon.stub().returns({
             handler: 'tests/stubs/authorizer.missingPolicy'
           })
@@ -106,6 +109,7 @@ describe('AuthorizerLambda', () => {
     it('returns valid', (done) => {
       const serverless = {
         service: {
+          provider: {},
           getFunction: sinon.stub().returns({
             handler: 'tests/stubs/authorizer.handler'
           })

@@ -31,7 +31,8 @@ class AuthorizerLambda {
   authorize(event, context, callback) {
     const path = this.authFunctionObj.handler.split('.')[0];
     const name = this.authFunctionObj.handler.split('/').pop().split('.')[1];
-    const lambda = new Lambda(`${process.cwd()}/${path}`, name);
+    const env = this.serverless.service.provider.environment || {}; // TODO: Merge with function obj
+    const lambda = new Lambda(`${process.cwd()}/${path}`, name, env);
 
     lambda.invoke(event, context, (err, authorizerResult) => {
       if (err) {
