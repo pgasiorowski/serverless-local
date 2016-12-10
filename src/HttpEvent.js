@@ -170,10 +170,18 @@ class HttpEvent {
             .set({ 'Content-Type': 'application/json' })
             .send(JSON.stringify({ message: 'Unauthorized' }));
         } else {
+          event.requestContext.authorizer = {};
+
+          // APIG allows to pass through additional string variables in 'context'
+          if (typeof res.context === 'object') {
+            Object.keys(res.context).forEach((key) => {
+              event.requestContext.authorizer[`${key}`] = `${res.context[key]}`;
+            });
+          }
+
           // APIG always parses principalId to string
-          event.requestContext.authorizer = {
-            principalId: `${res.principalId}`,
-          };
+          event.requestContext.authorizer.principalId = `${res.principalId}`;
+
           // Call the function authorizers
           try {
             lambda.invoke(event, context, callback);
