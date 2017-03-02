@@ -106,8 +106,11 @@ class HttpEvent {
   route(request, response) {
     const stage = this.serverless.service.provider.stage || 'dev';
     const env = this.serverless.service.provider.environment || {}; // TODO: Merge with function obj
-    const lambda = new Lambda(this.functionPath, this.handlerName, env);
+    if (this.serverless.service.provider.profile) {
+      env.AWS_PROFILE = this.serverless.service.provider.profile;
+    }
 
+    const lambda = new Lambda(this.functionPath, this.handlerName, env);
     const event = lambda.buildEventFromRequest(request, stage);
     const context = lambda.buildContext();
     const callback = (failure, result) => {
