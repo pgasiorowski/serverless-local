@@ -26,8 +26,6 @@ class Runtime {
     this.app.use(cookieParser());
     this.app.use(this.requestBodyMiddleware);
     this.app.use(morgan(':method :url :status :res[content-length] [:response-time ms]'));
-
-    this.setupRoutes();
   }
 
   /**
@@ -36,6 +34,9 @@ class Runtime {
    * @return {Object}  Instance of express.js server
    */
   run(done) {
+
+    this.setupRoutes();
+
     return this.app.listen(this.options.port, (e) => {
       this.serverless.cli.log(e || `serverless-local listening on port ${this.options.port}`);
       if (done) {

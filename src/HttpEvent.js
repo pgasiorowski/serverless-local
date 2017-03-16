@@ -117,6 +117,12 @@ class HttpEvent {
       if (failure) {
         const errorMessage = JSON.stringify(failure);
         this.serverless.cli.log(`λ ${this.functionName} returned error: ${errorMessage}`);
+
+        if (failure.stack) {
+          console.log('');
+          console.log(err.stack);
+          console.log('');
+        }
       }
 
       // Lambda did not fail but also did not succeed
