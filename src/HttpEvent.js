@@ -120,6 +120,11 @@ class HttpEvent {
         this.serverless.cli.log('');
         this.serverless.cli.log(`λ ${this.functionName} returned error: ${errorMessage}`);
 
+        response
+          .status(502)
+          .set({ 'Content-Type': 'application/json' })
+          .send(JSON.stringify({ message: 'Internal server error' }));
+        return;
       }
 
       // Lambda did not fail but also did not succeed
